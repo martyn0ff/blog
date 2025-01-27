@@ -3,6 +3,7 @@ const express = require("express");
 const { blogsRouter } = require("./route/blogs");
 const config = require("../util/config");
 const unknownEndpoint = require("./middleware/unknownEndpoint");
+const logger = require("../util/logger");
 
 function configure(app, dbClient) {
   app.use(cors());
@@ -13,7 +14,7 @@ function configure(app, dbClient) {
 
 function start(app) {
   app.listen(config.APPLICATION_PORT, config.APPLICATION_HOST, () => {
-    console.log(
+    logger.info(
       `Server running on host ${config.APPLICATION_HOST}, port ${config.APPLICATION_PORT}`,
     );
   });

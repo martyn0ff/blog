@@ -8,7 +8,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test test/**/*.test.js",
     "start": "NODE_ENV=prod node main.js",
     "dev": "NODE_ENV=dev nodemon main.js",
     "lint": "eslint ."

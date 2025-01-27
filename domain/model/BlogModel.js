@@ -9,6 +9,9 @@ class BlogModel {
     this.author = author;
     this.url = url;
     this.likes = likes;
+
     Object.freeze(this);
   }
 }
+
+module.exports = { BlogModel };
