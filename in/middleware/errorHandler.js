@@ -1,18 +1,17 @@
-const JsonResponse = require("../../domain/JsonResponse");
-const Logger = require("../../util/Logger");
+const { Response } = require("../../in/model/Response");
+const { logger } = require("../../util/config");
 
 function errorHandler() {
   return (error, req, res, next) => {
-    Logger.trace("(error handler middleware)");
-    Logger.error(error);
+    logger.error("Error handler middleware has caught an error");
 
-    if (error.name === "ValidationError") {
-      return res
-        .status(400)
-        .json(JsonResponse.newError(error.name, error.message));
+    if (res.headersSent) {
+      return next(error);
     }
 
-    next(error);
+    return res
+      .status(400)
+      .json(Response.error(error.message, { name: error.name }));
   };
 }
 

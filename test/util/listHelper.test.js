@@ -1,7 +1,7 @@
 const { test, describe } = require("node:test");
 const assert = require("node:assert");
-const sut = require("../util/listHelper");
-const fixtureUtil = require("./util/fixtureUtil");
+const sut = require("../../util/listHelper");
+const fixtureUtil = require("../testUtil/fixtureUtil");
 
 describe("dummy", () => {
   test("always returns one", () => {

@@ -1,7 +1,7 @@
 const { toJSON } = require("../db");
 let schema;
 
-function BlogDatabaseModel(mongoose) {
+function BlogDocument(mongoose) {
   if (!schema) {
     schema = new mongoose.Schema({
       title: String,
@@ -12,7 +12,7 @@ function BlogDatabaseModel(mongoose) {
   }
 
   schema.set("toJSON", toJSON());
-  return mongoose.model("BlogDatabaseModel", schema);
+  return mongoose.model("Blog", schema);
 }
 
-module.exports = { BlogDatabaseModel };
+module.exports = { BlogDocument };

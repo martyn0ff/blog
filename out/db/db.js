@@ -1,5 +1,5 @@
 const config = require("../../util/config");
-const logger = require("../../util/logger");
+const { logger } = require("../../util/config");
 
 function toJSON() {
   return {
@@ -17,16 +17,25 @@ function configure(mongoose) {
 }
 
 async function connect(mongoose) {
-  return await configure(mongoose)
-    .connect(config.MONGODB_URI)
-    .then((m) => {
-      logger.info("Connected to database successfully");
-      return m;
-    })
-    .catch((err) => {
-      logger.error(err);
-      throw err;
-    });
+  const connection = {};
+  try {
+    logger.info("Connecting to DB.");
+    connection.connection = await mongoose.connect(config.MONGODB_URI);
+  } catch (err) {
+    logger.error(err);
+    throw err;
+  }
+
+  logger.info("Connected to DB");
+  return connection.connection;
 }
 
-module.exports = { toJSON };
+async function init(mongoose) {
+  return connect(configure(mongoose));
+}
+
+async function close(mongoose) {
+  return mongoose.connection.close();
+}
+
+module.exports = { toJSON, init, close };

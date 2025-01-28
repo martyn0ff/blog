@@ -8,14 +8,17 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "node --test test/**/*.test.js",
-    "start": "NODE_ENV=prod node main.js",
-    "dev": "NODE_ENV=dev nodemon main.js",
+    "test": "cross-env NODE_ENV=test node --test \"test/**/*.test.js\"",
+    "testOnly": "cross-env NODE_ENV=test node --test --test-only \"test/**/*.test.js\"",
+    "start": "cross-env NODE_ENV=prod node main.js",
+    "dev": "cross-env NODE_ENV=dev nodemon main.js",
     "lint": "eslint ."
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.9",
-    "prettier": "^3.4.2"
+    "prettier": "^3.4.2",
+    "supertest": "^7.0.0"
   },
   "dependencies": {
     "@eslint/js": "^9.19.0",

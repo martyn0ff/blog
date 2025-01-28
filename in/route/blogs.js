@@ -1,5 +1,5 @@
 const express = require("express");
-const { BlogDatabaseModel } = require("../../out/db/model/BlogDatabaseModel");
+const { logger } = require("../../util/config");
 
 function blogsRouter(dbClient) {
   const router = express.Router();
@@ -16,14 +16,26 @@ function blogsRouter(dbClient) {
 
   router.post("/", async (req, res, next) => {
     try {
-      const newPost = await dbClient.save(req.body);
-      return res.status(200).json(newPost);
+      const newPost = req.body;
+      validate(newPost);
+      const savedPost = await dbClient.save(newPost);
+      return res.status(200).json(savedPost);
     } catch (error) {
       next(error);
     }
   });
 
   return router;
+}
+
+function validate(post) {
+  if (!post.title) {
+    throw new Error("Missing title");
+  }
+  if (!post.url) {
+    throw new Error("Missing url");
+  }
+  logger.trace("Validated!");
 }
 
 module.exports = { blogsRouter };
