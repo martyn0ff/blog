@@ -14,7 +14,7 @@ const {
 } = require("../../../out/db/client/BlogDatabaseClient");
 const {
   TestBlogDatabaseClient,
-} = require("../../out/db/client/TestDatabaseClient");
+} = require("../../out/db/client/TestBlogDatabaseClient");
 const db = require("../../../out/db/db");
 const mongoose = require("mongoose");
 const Logger = require("../../../util/Logger");
@@ -61,15 +61,31 @@ afterEach(async () => {
   await clearDatabase();
 });
 
+async function getBlogById(existingId) {
+  const {
+    title: existingTitle,
+    author: existingAuthor,
+    url: existingUrl,
+    likes: existingLikes,
+  } = await testBlogDatabaseClient.getById(existingId);
+  return {
+    id: existingId,
+    title: existingTitle,
+    author: existingAuthor,
+    url: existingUrl,
+    likes: existingLikes,
+  };
+}
+
 describe("blogsRouter", async () => {
-  await test("retrieves all blogs from the database", async () => {
+  await test("GET /api/blogs retrieves all blogs from the database", async () => {
     const response = await api.get("/api/blogs");
     const posts = response.body.posts;
 
     assert.strictEqual(posts.length, 6);
   });
 
-  await test("returned identifier key is 'id', not '_id'", async () => {
+  await test("GET /api/blogs returns identifier key is 'id', not '_id'", async () => {
     const response = await api.get("/api/blogs");
     const allPosts = response.body.posts;
 
@@ -86,7 +102,7 @@ describe("blogsRouter", async () => {
     }
   });
 
-  await test("saves blog to database", async () => {
+  await test("POST /api/blogs saves blog to database", async () => {
     const newPost = new BlogModel(
       "My epic post",
       "Roman Martynoff",
@@ -105,7 +121,7 @@ describe("blogsRouter", async () => {
     assert.deepEqual(loadedPost, newPost);
   });
 
-  await test("likes are implicitly 0", async () => {
+  await test("POST /api/blogs likes are implicitly 0 if missing", async () => {
     const newPostWithoutLikes = new BlogModel(
       "My epic post",
       "Roman Martynoff",
@@ -124,7 +140,7 @@ describe("blogsRouter", async () => {
     assert.strictEqual(loadedPost.likes, 0);
   });
 
-  await test("missing 'title' produces 400 Bad Request", async () => {
+  await test("POST /api/blogs missing 'title' produces 400 Bad Request", async () => {
     const newPostWithoutTitle = new BlogModel(
       undefined,
       "Roman Martynoff",
@@ -135,7 +151,7 @@ describe("blogsRouter", async () => {
     assert.strictEqual(response.status, 400);
   });
 
-  await test("missing 'url' produces 400 Bad Request", async () => {
+  await test("POST /api/blogs missing 'url' produces 400 Bad Request", async () => {
     const newPostWithoutUrl = new BlogModel(
       "My epic post",
       "Roman Martynoff",
@@ -144,6 +160,75 @@ describe("blogsRouter", async () => {
     );
     const response = await api.post("/api/blogs").send(newPostWithoutUrl);
     assert.strictEqual(response.status, 400);
+  });
+
+  await test("DELETE /api/blogs/:id deletes blog post from database", async () => {
+    const existingId = "5a422aa71b54a676234d17f8";
+    const existingBlog = await getBlogById(existingId);
+    assert.ok(existingBlog);
+
+    const response = await testBlogDatabaseClient.getById(existingId);
+
+    assert.strictEqual(response.body, undefined);
+  });
+
+  await test("DELETE /api/blogs/:id returns 200 OK with deleted blog in body", async () => {
+    const existingId = "5a422aa71b54a676234d17f8";
+    const existingBlog = await getBlogById(existingId);
+    assert.ok(existingBlog);
+
+    const response = await api.delete(`/api/blogs/${existingId}`);
+    const previouslyExistingBlog = existingBlog;
+
+    assert.strictEqual(response.status, 200);
+    assert.deepEqual(response.body, previouslyExistingBlog);
+  });
+
+  await test("PUT /api/blogs/:id updates blog post", async () => {
+    const existingId = "5a422aa71b54a676234d17f8";
+    const blogToUpdate = await getBlogById(existingId);
+    assert.ok(blogToUpdate);
+    const newLikes = 1000;
+    assert.notDeepEqual(blogToUpdate.likes, newLikes);
+    const updates = {
+      likes: newLikes,
+    };
+
+    await api.put(`/api/blogs/${existingId}`).send(updates);
+
+    const updatedBlog = await testBlogDatabaseClient.getById(existingId);
+    assert.strictEqual(updatedBlog.likes, newLikes);
+  });
+
+  await test("PUT /api/blogs/:id returns 200 OK with previous blog body on success", async () => {
+    const existingId = "5a422aa71b54a676234d17f8";
+    const blogBeforeUpdate = await getBlogById(existingId);
+    assert.ok(blogBeforeUpdate);
+    const newLikes = 1000;
+    assert.notDeepEqual(blogBeforeUpdate.likes, newLikes);
+    const updates = {
+      likes: newLikes,
+    };
+
+    const response = await api.put(`/api/blogs/${existingId}`).send(updates);
+
+    assert.strictEqual(response.status, 200);
+    assert.deepEqual(response.body, blogBeforeUpdate);
+  });
+
+  await test("PUT /api/blogs/:id returns 400 Bad Request with error response body if likes to update is negative", async () => {
+    const existingId = "5a422aa71b54a676234d17f8";
+    const blogToUpdate = await getBlogById(existingId);
+    assert.ok(blogToUpdate);
+    const newLikes = -100;
+    const updates = {
+      likes: newLikes,
+    };
+
+    const response = await api.put(`/api/blogs/${existingId}`).send(updates);
+
+    assert.strictEqual(response.status, 400);
+    assert.match(response.body.message, /Likes can not be negative/);
   });
 });
 
