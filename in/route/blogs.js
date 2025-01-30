@@ -1,48 +1,64 @@
 const express = require("express");
-const { logger } = require("../../util/config");
+const { Response } = require("../model/Response");
+const { ValidationError } = require("../model/ValidationError");
 
-function blogsRouter(dbClient) {
+function blogsRouter(blogDbClient) {
   const router = express.Router();
 
+  // Get all blog posts
   router.get("/", async (req, res, next) => {
     const posts = {};
     try {
-      posts.posts = await dbClient.getAll();
-      return res.status(200).json(posts);
+      posts.posts = await blogDbClient.getAll();
     } catch (error) {
       return next(error);
     }
+
+    return res.status(200).json(posts.posts);
   });
 
+  // Create new blog post
   router.post("/", async (req, res, next) => {
+    const newPost = req.body;
+    const savedPost = {};
     try {
-      const newPost = req.body;
       validatePost(newPost);
-      const savedPost = await dbClient.save(newPost);
-      return res.status(200).json(savedPost);
+      savedPost.post = await blogDbClient.save(newPost);
     } catch (error) {
-      next(error);
+      return next(error);
     }
+
+    return res
+      .status(200)
+      .json(
+        Response.success("User saved successfully.", { id: savedPost.post.id }),
+      );
   });
 
+  // Delete blog post by ID
   router.delete("/:id", async (req, res, next) => {
+    const deletedBlog = {};
     try {
-      const deletedBlog = await dbClient.remove(req.params.id);
-      return res.status(200).json(deletedBlog);
+      deletedBlog.blog = await blogDbClient.remove(req.params.id);
     } catch (error) {
-      next(error);
+      return next(error);
     }
+
+    return res.status(200).json(deletedBlog.blog);
   });
 
+  // Update blog post by ID
   router.put("/:id", async (req, res, next) => {
+    const update = req.body;
+    const preUpdateBlog = {};
     try {
-      const update = req.body;
       validateUpdate(update);
-      const preUpdateBlog = await dbClient.update(req.params.id, update);
-      return res.status(200).json(preUpdateBlog);
+      preUpdateBlog.blog = await blogDbClient.update(req.params.id, update);
     } catch (error) {
-      next(error);
+      return next(error);
     }
+
+    return res.status(200).json(preUpdateBlog.blog);
   });
 
   return router;
@@ -50,19 +66,19 @@ function blogsRouter(dbClient) {
 
 function validateUpdate(update) {
   if (update.likes < 0) {
-    throw new Error("Likes can not be negative");
+    throw new ValidationError("Likes can not be negative");
   }
 }
 
 function validatePost(post) {
   if (!post.title) {
-    throw new Error("Missing title");
+    throw new ValidationError("Missing title");
   }
   if (!post.url) {
-    throw new Error("Missing url");
+    throw new ValidationError("Missing url");
   }
   if (post.likes < 0) {
-    throw new Error("Likes can not be negative");
+    throw new ValidationError("Likes can not be negative");
   }
 }
 

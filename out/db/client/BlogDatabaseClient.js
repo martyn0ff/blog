@@ -1,5 +1,4 @@
 const { BlogDocument } = require("../model/BlogDocument");
-const { logger } = require("../../../util/config");
 
 function BlogDatabaseClient(mongoose) {
   const Blog = BlogDocument(mongoose);
@@ -12,8 +11,8 @@ function BlogDatabaseClient(mongoose) {
     if (!blog.likes) {
       blog.likes = 0;
     }
-    const dbModel = new Blog(blog);
-    return dbModel.save();
+    const document = new Blog(blog);
+    return document.save();
   }
 
   async function remove(id) {

@@ -3,8 +3,8 @@ class Response {
   message;
   details;
 
-  static success(message) {
-    return new Response("success", message);
+  static success(message, details) {
+    return new Response("success", message, details);
   }
 
   static error(message, details) {

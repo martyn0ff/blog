@@ -1,4 +1,6 @@
-const { BlogDatabaseClient } = require("./out/db/client/BlogDatabaseClient");
+const {
+  DatabaseClientRegistry,
+} = require("./out/db/client/DatabaseClientRegistry");
 const rest = require("./in/rest");
 const mongoose = require("mongoose");
 const db = require("./out/db/db");
@@ -6,10 +8,10 @@ const express = require("express");
 
 async function main() {
   const connection = db.init(mongoose);
-  const dbClient = BlogDatabaseClient(connection);
+  const dbClientRegistry = DatabaseClientRegistry(connection);
   const app = express();
 
-  rest.configure(app, dbClient);
+  rest.configure(app, dbClientRegistry);
   rest.start(app);
 }
 

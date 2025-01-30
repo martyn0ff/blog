@@ -9,7 +9,9 @@
   "main": "index.js",
   "scripts": {
     "test": "cross-env NODE_ENV=test node --test \"test/**/*.test.js\"",
+    "testCustom": "cross-env NODE_ENV=test node --test",
     "testOnly": "cross-env NODE_ENV=test node --test --test-only \"test/**/*.test.js\"",
+    "testOnlyCustom": "cross-env NODE_ENV=test node --test --test-only",
     "start": "cross-env NODE_ENV=prod node main.js",
     "dev": "cross-env NODE_ENV=dev nodemon main.js",
     "lint": "eslint ."
@@ -22,11 +24,13 @@
   },
   "dependencies": {
     "@eslint/js": "^9.19.0",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "eslint": "^9.19.0",
     "eslint-config-prettier": "^10.0.1",
     "express": "^4.21.2",
-    "mongoose": "^8.9.5"
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0"
   }
 }

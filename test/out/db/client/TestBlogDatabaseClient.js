@@ -1,10 +1,7 @@
-const { logger } = require("../../../../util/config");
-
-function TestBlogDatabaseClient(baseClient) {
-  const Blog = baseClient.Blog;
+function TestBlogDatabaseClient(baseBlogDatabaseClient) {
+  const Blog = baseBlogDatabaseClient.Blog;
 
   async function saveAll(blogObjects) {
-    blogObjects.forEach((o) => logger.trace(o));
     return Blog.bulkSave(blogObjects.map((blog) => new Blog(blog)));
   }
 
@@ -17,7 +14,7 @@ function TestBlogDatabaseClient(baseClient) {
   }
 
   return {
-    ...baseClient,
+    ...baseBlogDatabaseClient,
     saveAll,
     deleteAll,
     getById,

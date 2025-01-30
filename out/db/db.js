@@ -1,12 +1,23 @@
-const config = require("../../util/config");
-const { logger } = require("../../util/config");
+const config = require("../../config");
+const { logger } = require("../../config");
 
-function toJSON() {
+/**
+ * Base `toJSON()` function that removes `_id` and `__v` keys from
+ * the representation of a document. Any further transformations
+ * can be passed through `transform` argument.
+ * @param transform transform function to transform the document further
+ * @returns {{transform: *}}
+ */
+function toJSON(transform) {
   return {
     transform: (document, returnedObject) => {
       returnedObject.id = returnedObject._id.toString();
       delete returnedObject._id;
       delete returnedObject.__v;
+
+      if (transform) {
+        transform(document, returnedObject);
+      }
     },
   };
 }

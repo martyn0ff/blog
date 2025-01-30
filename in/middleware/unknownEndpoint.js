@@ -7,4 +7,4 @@ function unknownEndpoint() {
   };
 }
 
-module.exports = unknownEndpoint;
+module.exports = { unknownEndpoint };

@@ -1,0 +1,37 @@
+[
+  {
+    "_id": "5a422a851b54a676234d17f7",
+    "username": "epicuser345",
+    "passwordHash": "$2a$10$X9rLGJaONF0QZn1x0l1Q5O7b56r9hXXY9UrxhnGp.oc1f1Y0iJ5.C",
+    "name": "Epic User",
+    "__v": 0
+  },
+  {
+    "_id": "5a422b891b54a676234d17f8",
+    "username": "coolguy42",
+    "passwordHash": "$2a$10$NRM1JdyUxJo/VqD6kzQWk.3Xq3jH0RyoIJzJ7T8vfzZ3.liAFEXHu",
+    "name": "Cool Guy",
+    "__v": 0
+  },
+  {
+    "_id": "5a422bc61b54a676234d17f9",
+    "username": "techsavvy99",
+    "passwordHash": "$2a$10$1ZKfNKrJ5S7q7fXEXO1seuRLZ9f5dYIZn5S5r1.VfBtLksC5oKSZi",
+    "name": "Tech Savvy",
+    "__v": 0
+  },
+  {
+    "_id": "5a422c101b54a676234d17fa",
+    "username": "codewizard77",
+    "passwordHash": "$2a$10$QZ3HGT8pb1Ro1eTSbk1s7uoE.T.JCEy6.OxorPChhu5q9IE9tOm6.",
+    "name": "Code Wizard",
+    "__v": 0
+  },
+  {
+    "_id": "5a422c891b54a676234d17fb",
+    "username": "devninja123",
+    "passwordHash": "$2a$10$7JyEPMx6ajHAkfhSzZ1ZTO2.9JNpds3ZM6SJi2l.7I3J5YVxOPOSO",
+    "name": "Dev Ninja",
+    "__v": 0
+  }
+]

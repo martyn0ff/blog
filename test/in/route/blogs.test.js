@@ -1,93 +1,92 @@
-const { logger: appLogger } = require("../../../util/config");
 const {
+  appLogger,
   test,
   describe,
   before,
   after,
   beforeEach,
   afterEach,
-} = require("node:test");
-const assert = require("node:assert");
-const supertest = require("supertest");
+  assert,
+  supertest,
+  db,
+  mongoose,
+  Logger,
+  fixtureUtil,
+  rest,
+  express,
+} = require("../../integrationTests");
+
 const {
   BlogDatabaseClient,
 } = require("../../../out/db/client/BlogDatabaseClient");
 const {
   TestBlogDatabaseClient,
 } = require("../../out/db/client/TestBlogDatabaseClient");
-const db = require("../../../out/db/db");
-const mongoose = require("mongoose");
-const Logger = require("../../../util/Logger");
-const fixtureUtil = require("../../testUtil/fixtureUtil");
-const rest = require("../../../in/rest");
-const express = require("express");
 const { BlogModel } = require("../../../domain/model/BlogModel");
 
 let app;
-let api;
 let testLogger;
 let connection;
 let testBlogDatabaseClient;
-let fixture;
-
-before(async () => {
-  testLogger = new Logger("blogs test logger");
-  appLogger.disableAllLevels();
-
-  connection = await db.init(mongoose);
-  testLogger.info("Connected to DB");
-
-  const blogDatabaseClient = BlogDatabaseClient(connection);
-  testBlogDatabaseClient = TestBlogDatabaseClient(blogDatabaseClient);
-
-  fixture = JSON.parse(
-    fixtureUtil.readFixtureAsStringSync("./fixture/blogs.json"),
-  );
-
-  app = express();
-  app = rest.configure(app, testBlogDatabaseClient);
-  api = supertest(app);
-});
-
-beforeEach(async () => {
-  await populateDatabase();
-});
-
-after(async () => {
-  await closeDatabase();
-});
-
-afterEach(async () => {
-  await clearDatabase();
-});
-
-async function getBlogById(existingId) {
-  const {
-    title: existingTitle,
-    author: existingAuthor,
-    url: existingUrl,
-    likes: existingLikes,
-  } = await testBlogDatabaseClient.getById(existingId);
-  return {
-    id: existingId,
-    title: existingTitle,
-    author: existingAuthor,
-    url: existingUrl,
-    likes: existingLikes,
-  };
-}
+let blogsFixture;
+let sut;
 
 describe("blogsRouter", async () => {
+  //
+  // Lifecycle
+  //
+
+  before(async () => {
+    testLogger = new Logger("blogs test logger");
+    appLogger.disableAllLevels();
+
+    connection = await db.init(mongoose);
+    testLogger.info("Connected to DB");
+
+    const blogDatabaseClient = BlogDatabaseClient(connection);
+    const dbClientRegistry = {
+      blogDatabaseClient,
+      testBlogDatabaseClient: TestBlogDatabaseClient(blogDatabaseClient),
+    };
+    testBlogDatabaseClient = dbClientRegistry.testBlogDatabaseClient;
+
+    blogsFixture = JSON.parse(
+      fixtureUtil.readFixtureAsStringSync("./fixture/blogs.json"),
+    );
+
+    app = express();
+    app = rest.configure(app, dbClientRegistry);
+    sut = supertest(app);
+
+    // In case there are leftovers for one reason or another
+    await clearDatabase();
+  });
+
+  beforeEach(async () => {
+    await populateDatabase();
+  });
+
+  after(async () => {
+    await closeDatabase();
+  });
+
+  afterEach(async () => {
+    await clearDatabase();
+  });
+
+  //
+  // Tests
+  //
   await test("GET /api/blogs retrieves all blogs from the database", async () => {
-    const response = await api.get("/api/blogs");
-    const posts = response.body.posts;
+    const response = await sut.get("/api/blogs");
+    const posts = response.body;
 
     assert.strictEqual(posts.length, 6);
   });
 
   await test("GET /api/blogs returns identifier key is 'id', not '_id'", async () => {
-    const response = await api.get("/api/blogs");
-    const allPosts = response.body.posts;
+    const response = await sut.get("/api/blogs");
+    const allPosts = response.body;
 
     const gets = allPosts.map((post) => {
       // Note: this is not good for prod, but OK for now.
@@ -97,7 +96,7 @@ describe("blogsRouter", async () => {
     });
     const allPostsById = await Promise.all(gets);
     for (const post of allPosts) {
-      const postById = getPostById(post.id, "_id", allPostsById);
+      const postById = findPostById(post.id, "_id", allPostsById);
       assert.ok(postById);
     }
   });
@@ -110,8 +109,8 @@ describe("blogsRouter", async () => {
       0,
     );
 
-    const response = await api.post("/api/blogs").send(newPost);
-    const newPostId = response.body.id;
+    const response = await sut.post("/api/blogs").send(newPost);
+    const newPostId = response.body.details.id;
 
     // Same here: we involve implementation detail.
     // This is not how you test in real life.
@@ -129,8 +128,8 @@ describe("blogsRouter", async () => {
       undefined,
     );
 
-    const response = await api.post("/api/blogs").send(newPostWithoutLikes);
-    const newPostId = response.body.id;
+    const response = await sut.post("/api/blogs").send(newPostWithoutLikes);
+    const newPostId = response.body.details.id;
 
     // Same here: we involve implementation detail.
     // This is not how you test in real life.
@@ -147,7 +146,7 @@ describe("blogsRouter", async () => {
       "https://localhost",
       0,
     );
-    const response = await api.post("/api/blogs").send(newPostWithoutTitle);
+    const response = await sut.post("/api/blogs").send(newPostWithoutTitle);
     assert.strictEqual(response.status, 400);
   });
 
@@ -158,7 +157,7 @@ describe("blogsRouter", async () => {
       undefined,
       0,
     );
-    const response = await api.post("/api/blogs").send(newPostWithoutUrl);
+    const response = await sut.post("/api/blogs").send(newPostWithoutUrl);
     assert.strictEqual(response.status, 400);
   });
 
@@ -177,7 +176,7 @@ describe("blogsRouter", async () => {
     const existingBlog = await getBlogById(existingId);
     assert.ok(existingBlog);
 
-    const response = await api.delete(`/api/blogs/${existingId}`);
+    const response = await sut.delete(`/api/blogs/${existingId}`);
     const previouslyExistingBlog = existingBlog;
 
     assert.strictEqual(response.status, 200);
@@ -194,7 +193,7 @@ describe("blogsRouter", async () => {
       likes: newLikes,
     };
 
-    await api.put(`/api/blogs/${existingId}`).send(updates);
+    await sut.put(`/api/blogs/${existingId}`).send(updates);
 
     const updatedBlog = await testBlogDatabaseClient.getById(existingId);
     assert.strictEqual(updatedBlog.likes, newLikes);
@@ -210,10 +209,10 @@ describe("blogsRouter", async () => {
       likes: newLikes,
     };
 
-    const response = await api.put(`/api/blogs/${existingId}`).send(updates);
+    const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
 
     assert.strictEqual(response.status, 200);
-    assert.deepEqual(response.body, blogBeforeUpdate);
+    assert.deepStrictEqual(response.body, blogBeforeUpdate);
   });
 
   await test("PUT /api/blogs/:id returns 400 Bad Request with error response body if likes to update is negative", async () => {
@@ -225,15 +224,18 @@ describe("blogsRouter", async () => {
       likes: newLikes,
     };
 
-    const response = await api.put(`/api/blogs/${existingId}`).send(updates);
+    const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
 
     assert.strictEqual(response.status, 400);
     assert.match(response.body.message, /Likes can not be negative/);
   });
 });
 
+//
 // Helpers
-function getPostById(id, idKey, posts) {
+//
+
+function findPostById(id, idKey, posts) {
   return posts.find((post) => {
     const retrievedId = { id: post[idKey] };
     if (retrievedId.id instanceof mongoose.Types.ObjectId) {
@@ -243,9 +245,25 @@ function getPostById(id, idKey, posts) {
   });
 }
 
+async function getBlogById(existingId) {
+  const {
+    title: existingTitle,
+    author: existingAuthor,
+    url: existingUrl,
+    likes: existingLikes,
+  } = await testBlogDatabaseClient.getById(existingId);
+  return {
+    id: existingId,
+    title: existingTitle,
+    author: existingAuthor,
+    url: existingUrl,
+    likes: existingLikes,
+  };
+}
+
 async function populateDatabase() {
   testLogger.info("Populating database with test data.");
-  await testBlogDatabaseClient.saveAll(fixture);
+  await testBlogDatabaseClient.saveAll(blogsFixture);
   testLogger.info("Populated database with test data.");
 }
 
