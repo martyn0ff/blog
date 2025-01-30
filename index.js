@@ -7,7 +7,7 @@ const db = require("./out/db/db");
 const express = require("express");
 
 async function main() {
-  const connection = db.init(mongoose);
+  const connection = await db.init(mongoose);
   const dbClientRegistry = DatabaseClientRegistry(connection);
   const app = express();
 

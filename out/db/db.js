@@ -45,8 +45,8 @@ async function init(mongoose) {
   return connect(configure(mongoose));
 }
 
-async function close(mongoose) {
-  return mongoose.connection.close();
+async function close(mongoose, force) {
+  return mongoose.connection.close(Boolean(force));
 }
 
 module.exports = { toJSON, init, close };

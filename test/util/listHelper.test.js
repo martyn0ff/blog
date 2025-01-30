@@ -51,6 +51,7 @@ describe("favoriteBlog", () => {
       title: "Canonical string reduction",
       author: "Edsger W. Dijkstra",
       likes: 12,
+      user: "a8c821eff3814ccd39291033",
     };
 
     const favoriteBlog = sut.favoriteBlog(blogs);

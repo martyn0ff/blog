@@ -8,6 +8,10 @@ function UserDatabaseClient(mongoose) {
     return document.save();
   }
 
+  async function findOne(criteria) {
+    return User.findOne(criteria);
+  }
+
   async function getAll() {
     return User.find({});
   }
@@ -16,6 +20,7 @@ function UserDatabaseClient(mongoose) {
     User,
     save,
     getAll,
+    findOne,
   };
 }
 

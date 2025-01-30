@@ -1,37 +1,42 @@
 [
   {
-    "_id": "5a422a851b54a676234d17f7",
-    "username": "epicuser345",
-    "passwordHash": "$2a$10$X9rLGJaONF0QZn1x0l1Q5O7b56r9hXXY9UrxhnGp.oc1f1Y0iJ5.C",
+    "_id": "a8c821eff3814ccd39291031",
+    "username": "epicuser13",
+    "passwordHash": "$2a$10$q2UYvRVeKfdR323G6mbvP.cgzP0t8um9wG41TC9/Ta3NRFylWiBoW",
     "name": "Epic User",
+    "blogs": ["5a422a851b54a676234d17f7", "5a422aa71b54a676234d17f8"],
     "__v": 0
   },
   {
-    "_id": "5a422b891b54a676234d17f8",
+    "_id": "a8c821eff3814ccd39291032",
     "username": "coolguy42",
-    "passwordHash": "$2a$10$NRM1JdyUxJo/VqD6kzQWk.3Xq3jH0RyoIJzJ7T8vfzZ3.liAFEXHu",
+    "passwordHash": "$2a$10$.jm12CoelFeaXyeo3vU.0eKsMa.eiTOUHlJ5KfThm6o49XkSwEjZm",
     "name": "Cool Guy",
+    "blogs": [],
     "__v": 0
   },
   {
-    "_id": "5a422bc61b54a676234d17f9",
+    "_id": "a8c821eff3814ccd39291033",
     "username": "techsavvy99",
-    "passwordHash": "$2a$10$1ZKfNKrJ5S7q7fXEXO1seuRLZ9f5dYIZn5S5r1.VfBtLksC5oKSZi",
+    "passwordHash": "$2a$10$K.8OeXUNIFToAuSjiR7vsu5V3k8UpibkSssjeZlhfLmqjBwIBz2SO",
     "name": "Tech Savvy",
+    "blogs": ["5a422b3a1b54a676234d17f9"],
     "__v": 0
   },
   {
-    "_id": "5a422c101b54a676234d17fa",
+    "_id": "a8c821eff3814ccd39291034",
     "username": "codewizard77",
-    "passwordHash": "$2a$10$QZ3HGT8pb1Ro1eTSbk1s7uoE.T.JCEy6.OxorPChhu5q9IE9tOm6.",
+    "passwordHash": "$2a$10$asupTmYN1n3XPTaL0BcmM.GXRq506fJeBGD6FdEAy5aNVK5xOqs0e",
     "name": "Code Wizard",
+    "blogs": ["5a422b891b54a676234d17fa"],
     "__v": 0
   },
   {
-    "_id": "5a422c891b54a676234d17fb",
+    "_id": "a8c821eff3814ccd39291035",
     "username": "devninja123",
-    "passwordHash": "$2a$10$7JyEPMx6ajHAkfhSzZ1ZTO2.9JNpds3ZM6SJi2l.7I3J5YVxOPOSO",
+    "passwordHash": "$2a$10$ewWezRa.b7TpsShvrqXNzeyAl2Tkm/ZUY5ZQai7aCzo7wARwDUEX6",
     "name": "Dev Ninja",
+    "blogs": ["5a422ba71b54a676234d17fb", "5a422ba71b54a676234d17fc"],
     "__v": 0
   }
 ]

@@ -11,6 +11,12 @@ function UserDocument(mongoose) {
       },
       passwordHash: String,
       name: String,
+      blogs: [
+        {
+          type: mongoose.Schema.ObjectId,
+          ref: "Blog",
+        },
+      ],
     });
   }
 

@@ -20,15 +20,23 @@ const {
   BlogDatabaseClient,
 } = require("../../../out/db/client/BlogDatabaseClient");
 const {
+  UserDatabaseClient,
+} = require("../../../out/db/client/UserDatabaseClient");
+const {
   TestBlogDatabaseClient,
 } = require("../../out/db/client/TestBlogDatabaseClient");
 const { BlogModel } = require("../../../domain/model/BlogModel");
+const {
+  TestUserDatabaseClient,
+} = require("../../out/db/client/TestUserDatabaseClient");
 
 let app;
 let testLogger;
 let connection;
 let testBlogDatabaseClient;
+let testUserDatabaseClient;
 let blogsFixture;
+let usersFixture;
 let sut;
 
 describe("blogsRouter", async () => {
@@ -40,18 +48,26 @@ describe("blogsRouter", async () => {
     testLogger = new Logger("blogs test logger");
     appLogger.disableAllLevels();
 
+    // mongoose.set("debug", true);
     connection = await db.init(mongoose);
     testLogger.info("Connected to DB");
 
     const blogDatabaseClient = BlogDatabaseClient(connection);
+    const userDatabaseClient = UserDatabaseClient(connection);
     const dbClientRegistry = {
       blogDatabaseClient,
       testBlogDatabaseClient: TestBlogDatabaseClient(blogDatabaseClient),
+      userDatabaseClient,
+      testUserDatabaseClient: TestUserDatabaseClient(userDatabaseClient),
     };
     testBlogDatabaseClient = dbClientRegistry.testBlogDatabaseClient;
+    testUserDatabaseClient = dbClientRegistry.testUserDatabaseClient;
 
     blogsFixture = JSON.parse(
       fixtureUtil.readFixtureAsStringSync("./fixture/blogs.json"),
+    );
+    usersFixture = JSON.parse(
+      fixtureUtil.readFixtureAsStringSync("./fixture/users.json"),
     );
 
     app = express();
@@ -81,7 +97,7 @@ describe("blogsRouter", async () => {
     const response = await sut.get("/api/blogs");
     const posts = response.body;
 
-    assert.strictEqual(posts.length, 6);
+    assert(posts.length === 6);
   });
 
   await test("GET /api/blogs returns identifier key is 'id', not '_id'", async () => {
@@ -116,7 +132,7 @@ describe("blogsRouter", async () => {
     // This is not how you test in real life.
     const { title, author, url, likes } =
       await testBlogDatabaseClient.getById(newPostId);
-    const loadedPost = { title, author, url, likes };
+    const loadedPost = new BlogModel(title, author, url, likes);
     assert.deepEqual(loadedPost, newPost);
   });
 
@@ -211,24 +227,29 @@ describe("blogsRouter", async () => {
 
     const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
 
-    assert.strictEqual(response.status, 200);
+    assert(response.status === 200);
     assert.deepStrictEqual(response.body, blogBeforeUpdate);
   });
 
-  await test("PUT /api/blogs/:id returns 400 Bad Request with error response body if likes to update is negative", async () => {
-    const existingId = "5a422aa71b54a676234d17f8";
-    const blogToUpdate = await getBlogById(existingId);
-    assert.ok(blogToUpdate);
-    const newLikes = -100;
-    const updates = {
-      likes: newLikes,
-    };
+  await test(
+    "PUT /api/blogs/:id returns 400 Bad Request with error response body if likes to update is negative",
+    { only: true },
+    async () => {
+      appLogger.enableLevel("ERROR");
+      const existingId = "5a422aa71b54a676234d17f8";
+      const blogToUpdate = await getBlogById(existingId);
+      assert.ok(blogToUpdate);
+      const newLikes = -100;
+      const updates = {
+        likes: newLikes,
+      };
 
-    const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
+      const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
 
-    assert.strictEqual(response.status, 400);
-    assert.match(response.body.message, /Likes can not be negative/);
-  });
+      assert.strictEqual(response.status, 400);
+      assert.match(response.body.message, /Likes can not be negative/);
+    },
+  );
 });
 
 //
@@ -251,30 +272,51 @@ async function getBlogById(existingId) {
     author: existingAuthor,
     url: existingUrl,
     likes: existingLikes,
+    user: existingUser,
   } = await testBlogDatabaseClient.getById(existingId);
   return {
-    id: existingId,
     title: existingTitle,
     author: existingAuthor,
     url: existingUrl,
     likes: existingLikes,
+    user: String(existingUser),
+    id: existingId,
   };
 }
 
 async function populateDatabase() {
-  testLogger.info("Populating database with test data.");
-  await testBlogDatabaseClient.saveAll(blogsFixture);
-  testLogger.info("Populated database with test data.");
+  try {
+    testLogger.info("Populating database with test data.");
+    await testBlogDatabaseClient.saveAll(blogsFixture);
+    await testUserDatabaseClient.saveAll(usersFixture);
+    testLogger.info("Populated database with test data.");
+  } catch (error) {
+    testLogger.error(error);
+    throw error;
+  }
 }
 
 async function clearDatabase() {
-  testLogger.info("Clearing database.");
-  await testBlogDatabaseClient.deleteAll();
-  testLogger.info("Cleared database.");
+  try {
+    testLogger.info("Clearing database.");
+    await testBlogDatabaseClient.deleteAll();
+    const usersDeletion = await testUserDatabaseClient.deleteAll();
+    testLogger.info("", usersDeletion);
+    const documentsCount = await testUserDatabaseClient.countDocuments();
+    testLogger.info(`Cleared database. Documents left: ${documentsCount}`);
+  } catch (error) {
+    testLogger.error(error);
+    throw error;
+  }
 }
 
 async function closeDatabase() {
-  testLogger.info("Closing database connection.");
-  await db.close(connection);
-  testLogger.info("Closed database connection.");
+  try {
+    testLogger.info("Closing database connection.");
+    await db.close(connection);
+    testLogger.info("Closed database connection.");
+  } catch (error) {
+    testLogger.error(error);
+    throw error;
+  }
 }

@@ -4,7 +4,10 @@ function BlogDatabaseClient(mongoose) {
   const Blog = BlogDocument(mongoose);
 
   async function getAll() {
-    return Blog.find({});
+    return Blog.find({}).populate({
+      path: "user",
+      select: "-blogs", // redundant, we're already looking at blogs
+    });
   }
 
   async function save(blog) {

@@ -58,7 +58,6 @@ describe("usersRouter", async () => {
     );
 
     app = express();
-    // app.use(morgan("dev"));
     app = rest.configure(app, dbClientRegistry);
     sut = supertest(app);
 
@@ -114,6 +113,7 @@ describe("usersRouter", async () => {
   });
 
   await test("POST /api/users creates a new user", async () => {
+    appLogger.enableAllLevels();
     const newUser = new UnsavedUserModel(
       "roman",
       "myStrongPassword",
@@ -124,86 +124,102 @@ describe("usersRouter", async () => {
 
     const allUsersResponse = await sut.get("/api/users");
     const allUsers = allUsersResponse.body;
-    assert.strictEqual(allUsers.length, usersFixture.length + 1);
+    assert(allUsers.length === usersFixture.length + 1);
   });
 
-  await test(
-    "creating new user requires username and password to be at least 3 characters  long",
-    { only: true },
-    async () => {
-      assert(constraints.MIN_PASSWORD_LENGTH === 3);
-      assert(constraints.MIN_USERNAME_LENGTH === 3);
+  await test("creating new user requires username and password to be at least 3 characters  long, returns 400 Bad Request", async () => {
+    assert(constraints.MIN_PASSWORD_LENGTH === 3);
+    assert(constraints.MIN_USERNAME_LENGTH === 3);
 
-      const shortPassword = "a".repeat(constraints.MIN_PASSWORD_LENGTH - 1);
-      const validPassword = "a".repeat(constraints.MIN_PASSWORD_LENGTH);
-      const shortUsername = "a".repeat(constraints.MIN_USERNAME_LENGTH - 1);
-      const validUsername = "a".repeat(constraints.MIN_USERNAME_LENGTH);
-      const validName = "Roman Martynoff";
-      const undefinedPassword = undefined;
-      const undefinedUsername = undefined;
-      const usersCountBeforeSaving = usersFixture.length;
+    const shortPassword = "a".repeat(constraints.MIN_PASSWORD_LENGTH - 1);
+    const validPassword = "a".repeat(constraints.MIN_PASSWORD_LENGTH);
+    const shortUsername = "a".repeat(constraints.MIN_USERNAME_LENGTH - 1);
+    const validUsername = "a".repeat(constraints.MIN_USERNAME_LENGTH);
+    const validName = "Roman Martynoff";
+    const undefinedPassword = undefined;
+    const undefinedUsername = undefined;
+    const usersCountBeforeSaving = usersFixture.length;
 
-      const userWithoutPassword = new UnsavedUserModel(
-        validUsername,
-        undefinedPassword,
-        validName,
-      );
-      const userWithShortPassword = new UnsavedUserModel(
-        validUsername,
-        shortPassword,
-        validName,
-      );
-      const userWithoutUsername = new UnsavedUserModel(
-        undefinedUsername,
-        validPassword,
-        validName,
-      );
-      const userWithShortUsername = new UnsavedUserModel(
-        shortUsername,
-        validPassword,
-        validName,
-      );
-      const invalidUsers = [
-        userWithoutPassword,
-        userWithShortPassword,
-        userWithoutUsername,
-        userWithShortUsername,
-      ];
+    const userWithoutPassword = new UnsavedUserModel(
+      validUsername,
+      undefinedPassword,
+      validName,
+    );
+    const userWithShortPassword = new UnsavedUserModel(
+      validUsername,
+      shortPassword,
+      validName,
+    );
+    const userWithoutUsername = new UnsavedUserModel(
+      undefinedUsername,
+      validPassword,
+      validName,
+    );
+    const userWithShortUsername = new UnsavedUserModel(
+      shortUsername,
+      validPassword,
+      validName,
+    );
+    const invalidUsers = [
+      userWithoutPassword,
+      userWithShortPassword,
+      userWithoutUsername,
+      userWithShortUsername,
+    ];
 
-      // Concurrent requests via forEach/Promise.all fail
-      // with ECONNRESET. See: https://github.com/ladjs/supertest/issues/709
-      for (const user of invalidUsers) {
-        await sut.post("/api/users").send(user);
-      }
+    // Concurrent requests via forEach/Promise.all fail
+    // with ECONNRESET. See: https://github.com/ladjs/supertest/issues/709
+    const invalidUserSaveResponses = [];
+    for (const user of invalidUsers) {
+      const response = await sut.post("/api/users").send(user);
+      invalidUserSaveResponses.push(response);
+    }
 
-      const allUsersResponse = await sut.get("/api/users");
-      const allUsers = allUsersResponse.body;
-      const usersCountAfterSaving = allUsers.length;
+    const allUsersResponse = await sut.get("/api/users");
+    const allUsers = allUsersResponse.body;
+    const usersCountAfterSaving = allUsers.length;
 
-      assert(usersCountBeforeSaving === usersCountAfterSaving);
-    },
-  );
+    assert(usersCountBeforeSaving === usersCountAfterSaving);
+    invalidUserSaveResponses.forEach((response) =>
+      assert(response.status === 400),
+    );
+  });
 });
 
 //
 // Helpers
 //
 async function populateDatabase() {
-  testLogger.info("Populating database with test data.");
-  await testUserDatabaseClient.saveAll(usersFixture);
-  testLogger.info("Populated database with test data.");
+  try {
+    testLogger.info("Populating database with test data.");
+    await testUserDatabaseClient.saveAll(usersFixture);
+    testLogger.info("Populated database with test data.");
+  } catch (error) {
+    testLogger.error(error);
+    throw error;
+  }
 }
 
 async function clearDatabase() {
-  testLogger.info("Clearing database.");
-  await testUserDatabaseClient.deleteAll();
-  testLogger.info("Cleared database.");
+  try {
+    testLogger.info("Clearing database.");
+    await testUserDatabaseClient.deleteAll();
+    testLogger.info("Cleared database.");
+  } catch (error) {
+    testLogger.error(error);
+    throw error;
+  }
 }
 
 async function closeDatabase() {
-  testLogger.info("Closing database connection.");
-  await db.close(connection);
-  testLogger.info("Closed database connection.");
+  try {
+    testLogger.info("Closing database connection.");
+    await db.close(connection);
+    testLogger.info("Closed database connection.");
+  } catch (error) {
+    testLogger.error(error);
+    throw error;
+  }
 }
 
 function findUserById(id, idKey, users) {

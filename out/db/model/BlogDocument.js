@@ -8,6 +8,10 @@ function BlogDocument(mongoose) {
       author: String,
       url: String,
       likes: Number,
+      user: {
+        type: mongoose.Types.ObjectId,
+        ref: "User",
+      },
     });
   }
 

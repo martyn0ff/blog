@@ -8,10 +8,10 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test node --test \"test/**/*.test.js\"",
-    "testCustom": "cross-env NODE_ENV=test node --test",
-    "testOnly": "cross-env NODE_ENV=test node --test --test-only \"test/**/*.test.js\"",
-    "testOnlyCustom": "cross-env NODE_ENV=test node --test --test-only",
+    "test": "cross-env NODE_ENV=test node --test-concurrency=1 --test \"test/**/*.test.js\"",
+    "testCustom": "cross-env NODE_ENV=test node --test-concurrency=1 --test",
+    "testOnly": "cross-env NODE_ENV=test node --test-concurrency=1 --test --test-only \"test/**/*.test.js\"",
+    "testOnlyCustom": "cross-env NODE_ENV=test node --test-concurrency=1 --test --test-only",
     "start": "cross-env NODE_ENV=prod node main.js",
     "dev": "cross-env NODE_ENV=dev nodemon main.js",
     "lint": "eslint ."
@@ -30,6 +30,7 @@
     "eslint": "^9.19.0",
     "eslint-config-prettier": "^10.0.1",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0"
   }
