@@ -2,6 +2,7 @@ const { Response } = require("../../in/model/Response");
 const { logger } = require("../../config");
 const { ValidationError } = require("../../common/error/ValidationError");
 const { MongoServerError } = require("mongoose").mongo;
+const { MongooseError, CastError } = require("mongoose");
 const { JsonWebTokenError } = require("jsonwebtoken");
 
 function errorHandler() {
@@ -27,6 +28,16 @@ function errorHandler() {
     if (error instanceof MongoServerError) {
       // TODO: Show better error message when
       //  unique constraint is violated
+    }
+
+    if (error instanceof MongooseError) {
+      if (error instanceof CastError) {
+        // This usually happens when the user is passing ID that
+        // does not comply with that of Mongo's standard ObjectId
+        if (error.message.includes("Cast to ObjectId failed")) {
+          return res.status(404).send(Response.error("Not found"));
+        }
+      }
     }
 
     if (error instanceof JsonWebTokenError) {

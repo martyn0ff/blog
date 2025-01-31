@@ -37,11 +37,14 @@ function blogsRouter(blogDbClient) {
 
       const magicNumber = req.body.magicNumber;
       const payload = {};
+      const userId = {};
       if (isMagicNumber(magicNumber)) {
         payload.value = req.body.token;
+        userId.value = payload.value.payload.user;
       } else
         try {
           payload.value = jwt.verify(token, config.SECRET);
+          userId.value = payload.value.payload.user;
         } catch (error) {
           return next(error);
         }
@@ -52,7 +55,7 @@ function blogsRouter(blogDbClient) {
         blog.author,
         blog.url,
         blog.likes || 0,
-        payload.value.payload.user,
+        userId.value,
       );
       const savedBlog = {};
       try {
@@ -76,9 +79,50 @@ function blogsRouter(blogDbClient) {
   router.delete(
     "/:id",
     safeAsyncHandler(async (req, res, next) => {
+      checkMagicNumberForTests();
+
+      const token = req.body.token;
+      if (!token) {
+        return unauthorizedResponse(res);
+      }
+
+      const blogId = req.params.id;
+      const blogDocument = {};
+      try {
+        blogDocument.value = await blogDbClient
+          .getById(blogId)
+          .select("_id user");
+      } catch (error) {
+        return next(error);
+      }
+      if (!blogDocument.value) {
+        return res
+          .status(404)
+          .json(Response.error(`Blog with id ${blogId} was not found`));
+      }
+
+      const magicNumber = req.body.magicNumber;
+      const payload = {};
+      const requestUser = {};
+      if (isMagicNumber(magicNumber)) {
+        payload.value = req.body.token;
+        requestUser.value = payload.value.payload.user;
+      } else
+        try {
+          payload.value = jwt.verify(token, config.SECRET);
+          requestUser.value = payload.value.user;
+        } catch (error) {
+          return next(error);
+        }
+
+      const blogObject = blogDocument.value.toObject();
+      if (requestUser.value !== blogObject.user) {
+        return permissionDeniedResponse(res);
+      }
+
       const deletedBlog = {};
       try {
-        deletedBlog.blog = await blogDbClient.deleteById(req.params.id);
+        deletedBlog.blog = await blogDbClient.deleteById(blogId);
       } catch (error) {
         return next(error);
       }
@@ -114,10 +158,8 @@ function unauthorizedResponse(res) {
   return res.status(401).header("WWW-Authenticate", "Bearer").end();
 }
 
-function validateUpdate(update) {
-  if (update.likes < 0) {
-    throw new ValidationError("Likes can not be negative");
-  }
+function permissionDeniedResponse(res) {
+  return res.status(403).send(Response.error("Permission denied."));
 }
 
 // TODO: Remove this and do not use this in production
@@ -134,7 +176,14 @@ function isMagicNumber(magicNumber) {
   return magicNumber === process.env.MAGIC_NUMBER;
 }
 
+function validateUpdate(update) {
+  if (update.likes < 0) {
+    throw new ValidationError("Likes can not be negative");
+  }
+}
+
 function validateBlog(blog) {
+  console.log("Validating", blog);
   if (!blog.title) {
     throw new ValidationError("Missing title");
   }

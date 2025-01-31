@@ -1,6 +1,5 @@
 const { toJSON, toObject } = require("../db");
 const { BlogModel } = require("../../../domain/model/BlogModel");
-const url = require("node:url");
 let schema;
 
 function BlogDocument(mongoose) {

@@ -9,15 +9,10 @@ function TestBlogDatabaseClient(baseBlogDatabaseClient) {
     return Blog.deleteMany({});
   }
 
-  async function getById(id) {
-    return Blog.findById(id);
-  }
-
   return {
     ...baseBlogDatabaseClient,
     saveAll,
     deleteAll,
-    getById,
   };
 }
 

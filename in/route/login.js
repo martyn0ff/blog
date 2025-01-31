@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const config = require("../../config");
+const logger = config.logger;
 const { LoginRequest } = require("../model/LoginRequest");
 const { safeAsyncHandler } = require("../../in/util/routeUtil");
 
@@ -35,12 +36,15 @@ function loginRouter(userDbClient) {
         user.value.passwordHash,
       );
       if (!isPasswordCorrect) {
+        logger.error(
+          `Incorrect password provided for ${loginRequest.username}`,
+        );
         return unauthorizedResponse(res);
       }
 
       const identity = {
         username: user.value.username,
-        id: user.value._id,
+        user: user.value._id,
       };
       const token = {};
       try {
