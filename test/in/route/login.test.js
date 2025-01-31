@@ -119,7 +119,7 @@ describe("loginRouter", async () => {
         .send(userWithCorrectPasswordLoginRequest);
 
       assert(response.status === 200);
-      const token = response.body.token;
+      const token = response.body;
       assert(token.length > 0);
     });
   });

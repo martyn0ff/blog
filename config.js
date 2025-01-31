@@ -10,15 +10,21 @@ const APPLICATION_HOST = process.env.APPLICATION_HOST || "localhost";
 const APPLICATION_PORT = process.env.APPLICATION_PORT || "3000";
 const BCRYPT_ROUNDS = process.env.BCRYPT_ROUNDS || 12;
 const SECRET = process.env.SECRET;
+const MAGIC_NUMBER = process.env.MAGIC_NUMBER;
 
 validate();
 
 function validate() {
   if (!MONGODB_URI) {
-    throw new ConfigurationError("MongoDB URI is missing");
+    throw new ConfigurationError("Missing MongoDB URI");
   }
   if (!SECRET) {
     throw new ConfigurationError("Missing secret");
+  }
+  if (process.env.NODE_ENV === "test" && !MAGIC_NUMBER) {
+    throw new ConfigurationError(
+      "Set up MAGIC_NUMBER environment variable for blog tests to ignore requirement for a token. THIS IS A TEMPORARY MEASURE, DO NOT USE THIS IN REAL PROJECTS.",
+    );
   }
 }
 
@@ -28,5 +34,6 @@ module.exports = {
   APPLICATION_PORT,
   BCRYPT_ROUNDS,
   SECRET,
+  MAGIC_NUMBER,
   logger,
 };

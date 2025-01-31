@@ -11,14 +11,11 @@ function BlogDatabaseClient(mongoose) {
   }
 
   async function save(blog) {
-    if (!blog.likes) {
-      blog.likes = 0;
-    }
     const document = new Blog(blog);
     return document.save();
   }
 
-  async function remove(id) {
+  async function deleteById(id) {
     return Blog.findByIdAndDelete(id);
   }
 
@@ -30,7 +27,7 @@ function BlogDatabaseClient(mongoose) {
     Blog,
     getAll,
     save,
-    remove,
+    deleteById,
     update,
   };
 }

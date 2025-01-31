@@ -30,7 +30,7 @@ function loginRouter(userDbClient) {
         return unauthorizedResponse(res);
       }
 
-      const isPasswordCorrect = bcrypt.compareSync(
+      const isPasswordCorrect = validateCredentials(
         loginRequest.password,
         user.value.passwordHash,
       );
@@ -49,19 +49,22 @@ function loginRouter(userDbClient) {
         return next(error);
       }
 
-      return res.status(200).json({
-        token: token.value,
-        username: user.value.username,
-        name: user.value.name,
-      });
+      return res.status(200).json(token.value);
     }),
   );
 
   return router;
 }
 
+//
+// Helpers
+//
 function unauthorizedResponse(res) {
   return res.status(401).header("WWW-Authenticate", "Bearer").end();
+}
+
+function validateCredentials(password, passwordHash) {
+  return bcrypt.compareSync(password, passwordHash);
 }
 
 module.exports = { loginRouter };

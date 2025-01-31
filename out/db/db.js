@@ -1,5 +1,6 @@
 const config = require("../../config");
 const { logger } = require("../../config");
+const mongoose = require("mongoose");
 
 /**
  * Base `toJSON()` function that removes `_id` and `__v` keys from
@@ -18,6 +19,24 @@ function toJSON(transform) {
       if (transform) {
         transform(document, returnedObject);
       }
+    },
+  };
+}
+
+function toObject(transform) {
+  return {
+    transform: (document, returnedObject) => {
+      returnedObject.id = returnedObject._id.toString();
+      delete returnedObject._id;
+      delete returnedObject.__v;
+
+      transformObjectIdsToStrings(returnedObject);
+
+      if (transform) {
+        return transform(document, returnedObject);
+      }
+
+      return returnedObject;
     },
   };
 }
@@ -49,4 +68,12 @@ async function close(mongoose, force) {
   return mongoose.connection.close(Boolean(force));
 }
 
-module.exports = { toJSON, init, close };
+function transformObjectIdsToStrings(returnedObject) {
+  for (const key in returnedObject) {
+    if (returnedObject[key] instanceof mongoose.Types.ObjectId) {
+      returnedObject[key] = returnedObject[key].toString();
+    }
+  }
+}
+
+module.exports = { toJSON, toObject, init, close };

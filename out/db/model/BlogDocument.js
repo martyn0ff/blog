@@ -1,4 +1,6 @@
-const { toJSON } = require("../db");
+const { toJSON, toObject } = require("../db");
+const { BlogModel } = require("../../../domain/model/BlogModel");
+const url = require("node:url");
 let schema;
 
 function BlogDocument(mongoose) {
@@ -11,11 +13,19 @@ function BlogDocument(mongoose) {
       user: {
         type: mongoose.Types.ObjectId,
         ref: "User",
+        required: true,
       },
     });
   }
 
   schema.set("toJSON", toJSON());
+  schema.set(
+    "toObject",
+    toObject((doc, o) => {
+      const { title, author, url, likes, user } = o;
+      return new BlogModel(title, author, url, likes, user);
+    }),
+  );
   return mongoose.model("Blog", schema);
 }
 

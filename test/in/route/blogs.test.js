@@ -15,6 +15,7 @@ const {
   rest,
   express,
 } = require("../../integrationTests");
+const jwt = require("jsonwebtoken");
 
 const {
   BlogDatabaseClient,
@@ -29,6 +30,11 @@ const { BlogModel } = require("../../../domain/model/BlogModel");
 const {
   TestUserDatabaseClient,
 } = require("../../out/db/client/TestUserDatabaseClient");
+const config = require("../../../config");
+
+const existingUserId = "a8c821eff3814ccd39291032"; // username=techsavvy99
+const existingUsername = "coolguy42";
+const fakeDecodedJwt = createDecodedJwt(existingUsername, existingUserId);
 
 let app;
 let testLogger;
@@ -47,6 +53,7 @@ describe("blogsRouter", async () => {
   before(async () => {
     testLogger = new Logger("blogs test logger");
     appLogger.disableAllLevels();
+    appLogger.enableLevel("ERROR");
 
     // mongoose.set("debug", true);
     connection = await db.init(mongoose);
@@ -118,33 +125,44 @@ describe("blogsRouter", async () => {
   });
 
   await test("POST /api/blogs saves blog to database", async () => {
-    const newPost = new BlogModel(
+    const newBlog = new BlogModel(
       "My epic post",
       "Roman Martynoff",
       "https://localhost",
       0,
+      existingUserId,
     );
 
-    const response = await sut.post("/api/blogs").send(newPost);
-    const newPostId = response.body.details.id;
+    const response = await sut.post("/api/blogs").send({
+      blog: newBlog,
+      magicNumber: config.MAGIC_NUMBER,
+      token: fakeDecodedJwt,
+    });
+    const newBlogId = response.body.details.id;
 
     // Same here: we involve implementation detail.
     // This is not how you test in real life.
-    const { title, author, url, likes } =
-      await testBlogDatabaseClient.getById(newPostId);
-    const loadedPost = new BlogModel(title, author, url, likes);
-    assert.deepEqual(loadedPost, newPost);
+    const loadedBlogDocument = await testBlogDatabaseClient.getById(newBlogId);
+    const loadedBlogObject = loadedBlogDocument.toObject();
+    delete loadedBlogObject.id;
+    assert.deepStrictEqual(loadedBlogObject, newBlog);
   });
 
   await test("POST /api/blogs likes are implicitly 0 if missing", async () => {
-    const newPostWithoutLikes = new BlogModel(
+    const undefinedLikes = undefined;
+    const newBlogWithoutLikes = new BlogModel(
       "My epic post",
       "Roman Martynoff",
       "https://localhost",
-      undefined,
+      undefinedLikes,
+      existingUserId,
     );
 
-    const response = await sut.post("/api/blogs").send(newPostWithoutLikes);
+    const response = await sut.post("/api/blogs").send({
+      blog: newBlogWithoutLikes,
+      magicNumber: config.MAGIC_NUMBER,
+      token: fakeDecodedJwt,
+    });
     const newPostId = response.body.details.id;
 
     // Same here: we involve implementation detail.
@@ -156,35 +174,119 @@ describe("blogsRouter", async () => {
   });
 
   await test("POST /api/blogs missing 'title' produces 400 Bad Request", async () => {
-    const newPostWithoutTitle = new BlogModel(
-      undefined,
+    const undefinedTitle = undefined;
+    const newBlogWithoutTitle = new BlogModel(
+      undefinedTitle,
+      "Roman Martynoff",
+      "https://localhost",
+      0,
+      existingUserId,
+    );
+
+    const response = await sut.post("/api/blogs").send({
+      blog: newBlogWithoutTitle,
+      magicNumber: config.MAGIC_NUMBER,
+      token: fakeDecodedJwt,
+    });
+
+    assert(response.status === 400);
+  });
+
+  await test("POST /api/blogs missing 'url' produces 400 Bad Request", async () => {
+    const undefinedUrl = undefined;
+    const newBlogWithoutUrl = new BlogModel(
+      "My epic post",
+      "Roman Martynoff",
+      undefinedUrl,
+      0,
+      existingUserId,
+    );
+
+    const response = await sut.post("/api/blogs").send({
+      blog: newBlogWithoutUrl,
+      magicNumber: config.MAGIC_NUMBER,
+      token: fakeDecodedJwt,
+    });
+
+    assert(response.status === 400);
+  });
+
+  await test("POST /api/blogs missing user produces 400 Bad Request", async () => {
+    const undefinedUserId = undefined;
+    const newBlogWithoutUser = new BlogModel(
+      "My epic post",
+      "Roman Martynoff",
+      "https://localhost",
+      0,
+      undefinedUserId,
+    );
+    const undefinedUsername = undefined;
+    const fakeDecodedJwtWithMissingUser = createDecodedJwt(
+      undefinedUsername,
+      "userIdDoesNotMatter",
+    );
+
+    const response = await sut.post("/api/blogs").send({
+      blog: newBlogWithoutUser,
+      magicNumber: config.MAGIC_NUMBER,
+      token: fakeDecodedJwtWithMissingUser,
+    });
+
+    assert(response.status === 400);
+  });
+
+  await test("POST /api/blogs non-existing user produces 400 Bad Request", async () => {
+    const newBlogWithoutUser = new BlogModel(
+      "My epic post",
       "Roman Martynoff",
       "https://localhost",
       0,
     );
-    const response = await sut.post("/api/blogs").send(newPostWithoutTitle);
-    assert.strictEqual(response.status, 400);
+    const nonExistingUserJwt = createDecodedJwt(
+      "thisUsernameDoesNotExists",
+      "thisUserIdDoesNotExists",
+    );
+
+    const response = await sut.post("/api/blogs").send({
+      blog: newBlogWithoutUser,
+      magicNumber: config.MAGIC_NUMBER,
+      token: nonExistingUserJwt,
+    });
+
+    assert(response.status === 400);
   });
 
-  await test("POST /api/blogs missing 'url' produces 400 Bad Request", async () => {
-    const newPostWithoutUrl = new BlogModel(
+  await test("POST /api/blogs with valid JWT returns 200 OK and creates a new blog posted by the user found in JWT payload", async () => {
+    const newValidBlog = new BlogModel(
       "My epic post",
       "Roman Martynoff",
-      undefined,
+      "https://localhost",
       0,
     );
-    const response = await sut.post("/api/blogs").send(newPostWithoutUrl);
-    assert.strictEqual(response.status, 400);
+
+    const payload = createDecodedJwt(existingUsername, existingUserId);
+    const validToken = encodeAsJwt(payload);
+
+    const response = await sut.post("/api/blogs").send({
+      blog: newValidBlog,
+      token: validToken,
+    });
+    const createdBlogId = response.body.details.id;
+    const createdBlog = await testBlogDatabaseClient.getById(createdBlogId);
+
+    assert(response.status === 200);
+    assert(String(createdBlog.user) === existingUserId);
   });
 
   await test("DELETE /api/blogs/:id deletes blog post from database", async () => {
-    const existingId = "5a422aa71b54a676234d17f8";
-    const existingBlog = await getBlogById(existingId);
+    const existingBlogId = "5a422aa71b54a676234d17f8";
+    const existingBlog = await testBlogDatabaseClient.getById(existingBlogId);
     assert.ok(existingBlog);
 
-    const response = await testBlogDatabaseClient.getById(existingId);
+    await testBlogDatabaseClient.deleteById(existingBlogId);
+    const response = await testBlogDatabaseClient.getById(existingBlogId);
 
-    assert.strictEqual(response.body, undefined);
+    assert(response === null);
   });
 
   await test("DELETE /api/blogs/:id returns 200 OK with deleted blog in body", async () => {
@@ -231,31 +333,25 @@ describe("blogsRouter", async () => {
     assert.deepStrictEqual(response.body, blogBeforeUpdate);
   });
 
-  await test(
-    "PUT /api/blogs/:id returns 400 Bad Request with error response body if likes to update is negative",
-    { only: true },
-    async () => {
-      appLogger.enableLevel("ERROR");
-      const existingId = "5a422aa71b54a676234d17f8";
-      const blogToUpdate = await getBlogById(existingId);
-      assert.ok(blogToUpdate);
-      const newLikes = -100;
-      const updates = {
-        likes: newLikes,
-      };
+  await test("PUT /api/blogs/:id returns 400 Bad Request with error response body if likes to update is negative", async () => {
+    const existingId = "5a422aa71b54a676234d17f8";
+    const blogToUpdate = await getBlogById(existingId);
+    assert.ok(blogToUpdate);
+    const newLikes = -100;
+    const updates = {
+      likes: newLikes,
+    };
 
-      const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
+    const response = await sut.put(`/api/blogs/${existingId}`).send(updates);
 
-      assert.strictEqual(response.status, 400);
-      assert.match(response.body.message, /Likes can not be negative/);
-    },
-  );
+    assert.strictEqual(response.status, 400);
+    assert.match(response.body.message, /Likes can not be negative/);
+  });
 });
 
 //
 // Helpers
 //
-
 function findPostById(id, idKey, posts) {
   return posts.find((post) => {
     const retrievedId = { id: post[idKey] };
@@ -319,4 +415,21 @@ async function closeDatabase() {
     testLogger.error(error);
     throw error;
   }
+}
+
+function createDecodedJwt(username, userId, alg) {
+  return {
+    header: {
+      alg: alg || "HS256",
+      typ: "JWT",
+    },
+    payload: {
+      username,
+      user: userId,
+    },
+  };
+}
+
+function encodeAsJwt(payload) {
+  return jwt.sign(payload, config.SECRET);
 }

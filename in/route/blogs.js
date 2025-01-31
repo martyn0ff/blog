@@ -2,6 +2,9 @@ const express = require("express");
 const { Response } = require("../model/Response");
 const { ValidationError } = require("../../common/error/ValidationError");
 const { safeAsyncHandler } = require("../util/routeUtil");
+const jwt = require("jsonwebtoken");
+const config = require("../../config");
+const { BlogModel } = require("../../domain/model/BlogModel");
 
 function blogsRouter(blogDbClient) {
   const router = express.Router();
@@ -25,18 +28,45 @@ function blogsRouter(blogDbClient) {
   router.post(
     "/",
     safeAsyncHandler(async (req, res, next) => {
-      const newPost = req.body;
-      const savedPost = {};
+      checkMagicNumberForTests();
+
+      const token = req.body.token;
+      if (!token) {
+        return unauthorizedResponse(res);
+      }
+
+      const magicNumber = req.body.magicNumber;
+      const payload = {};
+      if (isMagicNumber(magicNumber)) {
+        payload.value = req.body.token;
+      } else
+        try {
+          payload.value = jwt.verify(token, config.SECRET);
+        } catch (error) {
+          return next(error);
+        }
+      // Token defines who posted this blog
+      const blog = req.body.blog;
+      const newBlog = new BlogModel(
+        blog.title,
+        blog.author,
+        blog.url,
+        blog.likes || 0,
+        payload.value.payload.user,
+      );
+      const savedBlog = {};
       try {
-        validatePost(newPost);
-        savedPost.post = await blogDbClient.save(newPost);
+        validateBlog(newBlog);
+        savedBlog.value = await blogDbClient.save(newBlog);
       } catch (error) {
+        // NB: if user does not exist, mongoose
+        // will catch that
         return next(error);
       }
 
       return res.status(200).json(
-        Response.success("User saved successfully.", {
-          id: savedPost.post.id,
+        Response.success("Blog saved successfully.", {
+          id: savedBlog.value.id,
         }),
       );
     }),
@@ -48,7 +78,7 @@ function blogsRouter(blogDbClient) {
     safeAsyncHandler(async (req, res, next) => {
       const deletedBlog = {};
       try {
-        deletedBlog.blog = await blogDbClient.remove(req.params.id);
+        deletedBlog.blog = await blogDbClient.deleteById(req.params.id);
       } catch (error) {
         return next(error);
       }
@@ -76,21 +106,46 @@ function blogsRouter(blogDbClient) {
   return router;
 }
 
+//
+// Helpers
+//
+
+function unauthorizedResponse(res) {
+  return res.status(401).header("WWW-Authenticate", "Bearer").end();
+}
+
 function validateUpdate(update) {
   if (update.likes < 0) {
     throw new ValidationError("Likes can not be negative");
   }
 }
 
-function validatePost(post) {
-  if (!post.title) {
+// TODO: Remove this and do not use this in production
+function checkMagicNumberForTests() {
+  if (!process.env.MAGIC_NUMBER) {
+    throw new Error(
+      "MAGIC_NUMBER is not defined. It is needed for tests and is a temporary measure.",
+    );
+  }
+}
+
+// TODO: Remove this and do not use this in production
+function isMagicNumber(magicNumber) {
+  return magicNumber === process.env.MAGIC_NUMBER;
+}
+
+function validateBlog(blog) {
+  if (!blog.title) {
     throw new ValidationError("Missing title");
   }
-  if (!post.url) {
+  if (!blog.url) {
     throw new ValidationError("Missing url");
   }
-  if (post.likes < 0) {
+  if (blog.likes < 0) {
     throw new ValidationError("Likes can not be negative");
+  }
+  if (!blog.user) {
+    throw new ValidationError("Missing user");
   }
 }
 
